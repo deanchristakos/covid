@@ -4,6 +4,32 @@ from astor_square_utils import *
 from marshmallow import Schema, fields
 import json
 
+env = None
+try:
+    env = os.environ['ASTOR_ENV']
+except KeyError as e:
+    try:
+        if env is None:
+            env = os.environ['NODE_ENV']
+    except KeyError as e:
+        pass
+
+if env is None:
+    env = 'local'
+
+cfg_dir = None
+
+try:
+    cfg_dir = os.environ['ASTOR_CFG_DIR']
+except KeyError as e:
+    cfg_dir = None
+
+if cfg_dir is None:
+    cfg_dir = '/usr/local/etc/astor_square/'
+
+
+api_db_initfile = api_cfg_dir + env + '-api.ini'
+
 class CovidStates(object):
 
     def __init__(self, dbconnection=None):
