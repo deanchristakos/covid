@@ -151,7 +151,7 @@ def get_covid_data():
 
     if api_cfg_dir is None:
         api_cfg_dir = '/usr/local/etc/astor_square/'
-    api_db_initfile = api_cfg_dir + env + '-api.ini'
+    api_db_initfile = cfg_dir + '/' + env + '-api.ini'
     mapper = ConfigSectionMap(api_db_initfile)
     db_name = 'covid19'
     db_host = mapper.sectionMap('Database')['dbhost']
