@@ -5,17 +5,22 @@ from marshmallow import Schema, fields
 import json
 import urllib.request
 import datetime
+import pytz
 
 
 def get_covid_tracking_data():
     url = 'https://covidtracking.com/api/states'
     result = {}
+    gmt = pytz.timezone('GMT')
+    eastern = pytz.timezone('US/Eastern')
     with urllib.request.urlopen(url) as state_data:
         data = json.loads(state_data.read().decode())
         for entry in data:
             state = entry['state']
             positive = entry['positive']
-            case_date = datetime.datetime.strptime(entry['dateModified'], "%Y-%m-%dT%H:%M:%SZ").date()
+            date = datetime.datetime.strptime(entry['dateModified'], "%Y-%m-%dT%H:%M:%SZ")
+            dategmt = gmt.localize(date)
+            case_date = dategmt.astimezone(eastern).date()
             hospitalized = entry['hospitalized']
             death = entry['death']
             result[state] = {'positive': positive, 'date': case_date, 'hospitalized': hospitalized, 'deaths':death}
