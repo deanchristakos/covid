@@ -22,7 +22,7 @@ def get_covid_tracking_data():
             dategmt = gmt.localize(date)
             case_date = dategmt.astimezone(eastern).date()
             hospitalized = entry['hospitalized']
-            death = entry['death']
+            death = entry['death'] if entry['death'] is not None else 0
             result[state] = {'positive': positive, 'date': case_date, 'hospitalized': hospitalized, 'deaths':death}
     return result
 
