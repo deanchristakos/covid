@@ -56,13 +56,13 @@ class CovidStates(object):
             for row in rows:
                 covid = Covid()
                 self.create_covid_from_row(covid, row)
-                if self.updated_date is None or covid.official_cases_date.strftime("%Y-%m-%d") > self.updated_date:
+                if self.updated_date is None or covid.official_cases_date > datetime.datetime.strptime(self.updated_date, "%Y-%m-%d").date():
                     self.updated_date = covid.official_cases_date.strftime("%Y-%m-%d")
 
                 try:
                     covid_tracking_entry = covid_tracking_data[covid.state_abbrev]
                     update_covid_from_entry(covid, covid_tracking_entry)
-                    if (self.updated_date is None or covid_tracking_entry.official_cases_date.strftime("%Y-%m-%d") > self.updated_date):
+                    if (self.updated_date is None or covid.official_cases_date > datetime.datetime.strptime(self.updated_date, "%Y-%m-%d").date()):
                         self.updated_date = covid.official_cases_date.strftime("%Y-%m-%d")
                 except KeyError as e:
                     logging.error('cannot find covid tracking data for ' + covid.state_abbrev)
