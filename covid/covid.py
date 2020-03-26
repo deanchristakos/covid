@@ -39,11 +39,13 @@ def update_covid_from_entry(covid, entry):
 
 class CovidStates(object):
 
-    def __init__(self, dbconnection=None):
+    def __init__(self, dbconnection=None, country=None):
         self.covid_states = []
         self.updated_date = None
-        self.query = "SELECT * from state_info"
-
+        if country is None:
+            self.query = "SELECT * from state_info"
+        else:
+            self.query = "SELECT * FROM state_info WHERE location_id LIKE '"+country+"%'"
         covid_tracking_data = get_covid_tracking_data()
 
         if dbconnection is not None:
@@ -54,11 +56,13 @@ class CovidStates(object):
             for row in rows:
                 covid = Covid()
                 self.create_covid_from_row(covid, row)
+                if self.updated_date is None or covid.official_cases_date.strftime("%Y-%m-%d") > self.updated_date:
+                    self.updated_date = covid.official_cases_date.strftime("%Y-%m-%d")
 
                 try:
                     covid_tracking_entry = covid_tracking_data[covid.state_abbrev]
                     update_covid_from_entry(covid, covid_tracking_entry)
-                    if (self.updated_date is None or covid_tracking_entry.official_cases_date > self.updated_date):
+                    if (self.updated_date is None or covid_tracking_entry.official_cases_date.strftime("%Y-%m-%d") > self.updated_date):
                         self.updated_date = covid.official_cases_date.strftime("%Y-%m-%d")
                 except KeyError as e:
                     logging.error('cannot find covid tracking data for ' + covid.state_abbrev)
@@ -171,7 +175,7 @@ class CovidSchema(Schema):
     beds_per_1000 = fields.Float()
     beds_per_1000_formatted = fields.Str()
 
-def get_covid_data():
+def get_covid_data(country=None):
     env = None
     try:
         env = os.environ['ASTOR_ENV']
@@ -211,6 +215,6 @@ def get_covid_data():
     dbconnection = psycopg2.connect("dbname='" + db_name + "' user='" + user_name + "' host='" + db_host + "'%s"
                                     % "password='" + password + "'")
 
-    covid_states = CovidStates(dbconnection)
+    covid_states = CovidStates(dbconnection, country)
     return json.dumps(covid_states.get_json())
 
