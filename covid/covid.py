@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+import logging
+logging.basicConfig(format='%(asctime)s %(funcName)s %(message)s', filename='/var/log/covid/covid.log',level=logging.DEBUG)
 from astor_globals import *
 from astor_square_utils import *
 from marshmallow import Schema, fields
@@ -6,7 +8,7 @@ import json
 import urllib.request
 import datetime
 import pytz
-
+from build_truth_data import create_model, convert_truth_data_to_timeseries, get_ground_truth
 
 def get_covid_tracking_data():
     url = 'https://covidtracking.com/api/states'
@@ -218,3 +220,21 @@ def get_covid_data(country=None):
     covid_states = CovidStates(dbconnection, country)
     return json.dumps(covid_states.get_json())
 
+def get_state_timeline(state='NY'):
+    if state is None:
+        state = 'NY'
+    start_date = datetime.datetime.strptime('20200125', '%Y%m%d').date()
+    override_date = datetime.datetime.strptime('20200415', '%Y%m%d').date()
+    result_data = create_model(state, None, 2.35, start_date, 2, 4, -0.4, 1.5, override_date)
+    result_json = json.dumps(result_data)
+    return result_json
+
+
+
+def get_historic_data(state):
+
+    ground_truth = get_ground_truth(state)
+    truth_timeseries = convert_truth_data_to_timeseries(ground_truth)
+
+    result_json = json.dumps(truth_timeseries)
+    return result_json
