@@ -8,7 +8,7 @@ import json
 import urllib.request
 import datetime
 import pytz
-from .build_truth_data import create_model, convert_truth_data_to_timeseries, get_ground_truth
+from build_truth_data import create_model, convert_truth_data_to_timeseries, get_ground_truth
 
 
 def get_state_stats(state):
