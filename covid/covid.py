@@ -13,6 +13,7 @@ from build_truth_data import create_model, convert_truth_data_to_timeseries, get
 
 def get_state_stats(state):
     query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
+    logging.debug("getting data from " + cfg_dir + env + '-covid.ini')
     dbconnection = getDBConnection(cfg_dir + env + '-covid.ini')
     state = State(state, dbconnection)
     return json.dumps(state.get_json())
@@ -20,6 +21,7 @@ def get_state_stats(state):
 
 def get_covid_parameters():
     query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
+    logging.debug("getting data from " + cfg_dir + env + '-covid.ini')
     dbconnection = getDBConnection(cfg_dir + env + '-covid.ini')
     covid_params = CovidParameters(dbconnection)
     return json.dumps(covid_params.get_json())
@@ -359,6 +361,8 @@ def get_covid_data(country=None):
     if api_cfg_dir is None:
         api_cfg_dir = '/usr/local/etc/astor_square/'
     api_db_initfile = cfg_dir + '/' + env + '-api.ini'
+
+    logging.debug("getting data from " + api_db_initfile)
     mapper = ConfigSectionMap(api_db_initfile)
     db_name = 'covid19'
     db_host = mapper.sectionMap('Database')['dbhost']
