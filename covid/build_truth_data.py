@@ -99,7 +99,7 @@ def convert_truth_data_to_timeseries(truth_data, interval=1):
 def create_model(state, start_pop, r0, start_date, starting_infections, interval, weather_adj_val, r_override, r_override_date):
     num_removed = 0
     query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
-    dbconnection = getDBConnection(cfg_dir + env + '-covid.ini')
+    dbconnection = getDBConnection(cfg_dir + '/' + env + '-covid.ini')
     cursor = dbconnection.cursor()
     cursor.execute(query, (state,))
     row = cursor.fetchone()
