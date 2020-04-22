@@ -9,51 +9,19 @@ import datetime
 import pytz
 from build_truth_data import create_model, convert_truth_data_to_timeseries, get_ground_truth
 
-env = None
-try:
-    env = os.environ['ASTOR_ENV']
-except KeyError as e:
-    try:
-        if env is None:
-            env = os.environ['NODE_ENV']
-    except KeyError as e:
-        pass
-
-if env is None:
-    env = 'local'
-
-cfg_dir = None
-
-try:
-    cfg_dir = os.environ['ASTOR_CFG_DIR']
-except KeyError as e:
-    cfg_dir = None
-
-if cfg_dir is None:
-    cfg_dir = '/usr/local/etc/astor_square/'
-
-try:
-    api_cfg_dir = os.environ['ASTOR_API_CFG_DIR']
-except KeyError as e:
-    api_cfg_dir = None
-
-if api_cfg_dir is None:
-    api_cfg_dir = '/usr/local/etc/astor_square/'
-api_db_initfile = cfg_dir + '/' + env + '-api.ini'
-
 
 def get_state_stats(state):
     query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
-    logging.debug("getting data from " + cfg_dir + env + '-covid.ini')
-    dbconnection = getDBConnection(cfg_dir + env + '-covid.ini')
+    logging.debug("getting data from " + cfg_dir + '/' + env + '-covid.ini')
+    dbconnection = getDBConnection(cfg_dir + '/' + env + '-covid.ini')
     state = State(state, dbconnection)
     return json.dumps(state.get_json())
 
 
 def get_covid_parameters():
     query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
-    logging.debug("getting data from " + cfg_dir + env + '-covid.ini')
-    dbconnection = getDBConnection(cfg_dir + env + '-covid.ini')
+    logging.debug("getting data from " + cfg_dir + '/' + env + '-covid.ini')
+    dbconnection = getDBConnection(cfg_dir + '/' + env + '-covid.ini')
     covid_params = CovidParameters(dbconnection)
     return json.dumps(covid_params.get_json())
 
