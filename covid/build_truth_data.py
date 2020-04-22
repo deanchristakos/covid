@@ -14,6 +14,9 @@ median_hospital_stay = 15.0
 prev_double_rate_days = 5.0
 double_rate_days = 5.0
 stay_at_home_pct = 1
+us_population = 327200000
+yearly_deaths = 2813503
+yearly_births = 3791712
 
 def get_ground_truth(state):
     url = 'https://covidtracking.com/api/states/daily'
@@ -48,16 +51,47 @@ def get_ground_truth(state):
     return truth_data
 
 
-def convert_truth_data_to_timeseries(truth_data):
+def convert_truth_data_to_timeseries(truth_data, interval=1):
 
     hospitalizations = []
     deaths = []
     positives = []
-    for k in sorted(truth_data.keys()):
+    start = True
+    truth_data_keys = sorted(truth_data.keys())
+    if interval == 1:
+        for i in range(0, len(truth_data_keys)):
+            dt = truth_data_keys[i][2:]
+            k = truth_data_keys[i]
+            try:
+                hospitalizations.append( {'date':dt, 'val': truth_data[k]['hospitalizedIncrease']} )
+                deaths.append({'date': dt, 'val': truth_data[k]['deathIncrease']})
+                positives.append({'date': dt, 'val': truth_data[k]['positiveIncrease']})
+            except Exception as e:
+                error = str(e)
+                pass
+    else:
+        for i in range(0, len(truth_data_keys), interval):
+            dt = truth_data_keys[i][2:]
+            if (i > 0):
+                daily_keys = [k for k in truth_data_keys[i-interval+1:i]]
+                hospitalizations_sum = int(numpy.sum([truth_data[k]['hospitalizedIncrease'] for k in truth_data_keys[i-interval+1:i]]))
+                hospitalizations.append({'date': dt, 'val': hospitalizations_sum})
+                deaths_sum = int(numpy.sum([truth_data[k]['deathIncrease'] for k in truth_data_keys[i-interval+1:i]]))
+                deaths.append({'date': dt, 'val': deaths_sum})
+                positives_sum = int(numpy.sum([truth_data[k]['positiveIncrease'] for k in truth_data_keys[i-interval+1:i]]))
+                positives.append({'date': dt, 'val': positives_sum})
+            else:
+                key = truth_data_keys[i]
+                hospitalizations.append({'date': dt, 'val': truth_data[key]['hospitalizedIncrease']})
+                deaths.append({'date': dt, 'val': truth_data[key]['deathIncrease']})
+                positives.append({'date': dt, 'val': truth_data[key]['positiveIncrease']})
+
+    """
+    for k in sorted(truth_data.keys())[::interval]:
         dt = k[2:]
         hospitalizations.append( {'date':dt, 'val': truth_data[k]['hospitalizedIncrease'] } )
         deaths.append( { 'date':dt, 'val': truth_data[k]['deathIncrease'] })
-        positives.append( { 'date':dt, 'val': truth_data[k]['positiveIncrease'] } )
+        positives.append( { 'date':dt, 'val': truth_data[k]['positiveIncrease'] } )"""
 
     return { 'actual_hospitalizations': hospitalizations, 'actual_deaths': deaths, 'actual_positives': positives }
 
@@ -88,11 +122,8 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     fatality_rate = row[26]
     median_hospital_stay = row[27]
 
-    us_population = 327200000
-    yearly_deaths = 2813503
     deaths_per_day = yearly_deaths/365
 
-    yearly_births = 3791712
     births_per_day = yearly_births/365
 
 
@@ -131,15 +162,16 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     total_deaths_by_date[current_date] = 0
     total_hospitalization_by_date[current_date] = 0
     total_infected_living_by_date[current_date] = 0
+    new_hospitalizations_by_date[current_date] = 0
     deaths[current_date] = 0
     total_deaths_by_date[current_date] = 0
 
     for d in range(0,30):
-        for v in range(1,interval):
+
+        for v in range(0,interval):
             btw_date_obj = current_date_obj + timedelta(days=v)
             btw_date = btw_date_obj.strftime('%Y%m%d')
             cases[btw_date] = cases[current_date]
-            #deaths[btw_date] = deaths[current_date]
             #total_deaths_by_date[btw_date] = total_deaths_by_date[current_date]
             total_cases[btw_date] = total_cases[current_date]
             #total_hospitalization_by_date[btw_date] = total_hospitalization_by_date[current_date]
@@ -218,24 +250,89 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
             cases[dt_str] = cases[prev_date]*(2**(1.0/implied_doubling_days))
             total_cases[dt_str] = total_cases[prev_date]*(2**(1.0/implied_doubling_days))
             deaths[dt_str] = deaths[prev_date]*(2**(1.0/implied_doubling_days))
+            new_hospitalizations_by_date[dt_str] = new_hospitalizations_by_date[prev_date]*(2**(1.0/implied_doubling_days))
             prev_date_obj = dt
 
     cases_series = []
     sorted_series = sorted(cases.keys())
     for date in sorted_series[::interval]:
         cases_series.append({'date':date, 'val':cases[date]})
+    cases_series = interpolate(cases_series, interval)
+
     deaths_series = []
     sorted_series = sorted(deaths.keys())
-    for date in sorted_series[::4]:
+    for date in sorted_series[::interval]:
         deaths_series.append({'date':date, 'val':deaths[date]})
+
+    deaths_series = interpolate(deaths_series, interval)
+    daily_deaths_series = []
+    """
+    last_death_entry = None
+    for d in deaths_series[1:]:
+        new_deaths = d['val']
+        incremental_deaths = new_deaths/interval
+        date_obj = datetime.strptime(d['date'], '%Y%m%d').date() - timedelta(days=interval-1)
+        prev_date_obj = date_obj - timedelta(days=1)
+        prev_date_str = prev_date_obj.strftime('%Y%m%d')
+        prev_deaths = deaths[prev_date_str]
+        slope = (new_deaths - prev_deaths)/2
+        if len(daily_deaths_series) == 0:
+            immediate_prev_deaths = 0
+        else:
+            immediate_prev_deaths = daily_deaths_series[-1]['val']
+        starting_point = immediate_prev_deaths + slope
+        area_sum = 0.5*slope
+        increase_series = calc_incremental_increase(new_deaths, slope, interval, area_sum)
+        for i in range(0, interval):
+            date_obj = date_obj + timedelta(days=1)
+            date_str = date_obj.strftime('%Y%m%d')
+            try:
+                daily_deaths_series.append({'date':date_str, 'val': increase_series[i]})
+            except Exception as e:
+                print('problem: '+ str(e))
+    deaths_series = sorted(daily_deaths_series, key=lambda x: x['date'])"""
+
 
     hospitalizations_series = []
     sorted_series = sorted(new_hospitalizations_by_date.keys())
-    for date in sorted_series:
+    for date in sorted_series[::4]:
         hospitalizations_series.append({'date':date, 'val':new_hospitalizations_by_date[date]})
 
+    hospitalizations_series = interpolate(hospitalizations_series, interval)
     return {'cases': cases_series, 'deaths':deaths_series, 'hospitalizations':hospitalizations_series}
 
+
+def calc_change(start, slope, interval):
+    nums = []
+    val = start
+    for i in range(0, interval):
+        val = val + slope
+        nums.append(val)
+    if nums[-1] < 0:
+        # we have to change this and use a different slope if this is less than 0
+        slope = (0 - 1.0*start) / interval
+        if (slope*interval) >= 0:
+            nums = calc_change(start, slope, interval)
+        else:
+            nums = [n if n >=0 else 0 for n in nums]
+    return nums
+
+def calc_incremental_increase(total, slope, interval, starting_point=0, area_sum = 0):
+    prev_area = 0
+    areas = []
+
+    reverse = False
+    if slope < 0:
+        slope = -slope
+        reverse = True
+    for i in range(int(starting_point),int(interval)+int(starting_point)):
+        area = 0.5*slope*(i+1)*(i+1) - area_sum
+        areas.append(area)
+        area_sum += area
+        prev_area = area
+    if reverse:
+        areas = areas[::-1]
+    return areas[1:]
 
 def insert_api_data_to_db():
     url = 'https://covidtracking.com/api/states/daily'
@@ -274,8 +371,104 @@ def insert_api_data_to_db():
         print(k + ": " + str(truth_data[k]))
     return
 
+
+def calculate_final_val(area, start, interval):
+
+    result = 2*area/interval +start
+    return result
+
+    num = area - ( float(start) / (2*(interval))  )
+    denom = ( (interval+1)/2.0 - 1.0/( 2*(interval) ) )
+    final = num/denom
+    return final
+
+
+def calculate_slope_old(start, final, interval):
+    return (1.0*final - start)/(interval)
+
+def calculate_slope(start, total, interval):
+    sum = 0
+    for i in range(1, interval+1):
+        sum += i
+    slope = (total - 4*start)/sum
+    return slope
+
+
+def interpolate(dated_data, interval):
+    starting_date = datetime.strptime(dated_data[0]['date'], '%Y%m%d').date()
+    current_date = starting_date
+    interpolated_dated_values = [dated_data[0]]
+    interpolated_index = interval
+    for i in range(1, len(dated_data)):
+        prev_entry = dated_data[i - 1]
+        prev_date = prev_entry['date']
+        prev_val = prev_entry['val']
+        entry = dated_data[i]
+        dt = entry['date']
+        val = entry['val']
+
+        prev_interpolated_val = interpolated_dated_values[interpolated_index - interval]['val']
+        slope = calculate_slope(prev_interpolated_val, val, interval)
+
+        interpolation = calc_change(prev_interpolated_val, slope, interval)
+        interp_sum = numpy.sum(interpolation)
+
+        prev_date_obj = datetime.strptime(prev_date, '%Y%m%d').date()
+        interp_date = prev_date_obj + timedelta(days=1)
+        for i in range(0, len(interpolation)):
+            interpolated_dated_values.append({'val': interpolation[i], 'date': interp_date.strftime('%Y%m%d')})
+            interp_date = interp_date + timedelta(days=1)
+
+        interpolated_index += interval
+    return interpolated_dated_values
+
+def experiment_with_data(data = [0, 1, 5, 10, 20, 30, 35, 30, 20, 10, 5, 1, 0]):
+    #data = [0, 1, 5, 10, 20, 30, 35, 30, 20, 10, 5, 1, 0]
+    dated_values = []
+    starting_date = datetime.strptime('20200301', '%Y%m%d').date()
+    current_date = starting_date
+    interval = 4
+    for i in range(0, len(data)):
+        dated_values.append({'date': current_date.strftime('%Y%m%d'), 'val':data[i]})
+        current_date = current_date + timedelta(days=interval)
+    print('dated values: ' + str(dated_values))
+    interpolated_dated_values = [ dated_values[0] ]
+    interpolated_index = 4
+    prev_area = 0
+    for i in range(1, len(dated_values)):
+        prev_entry = dated_values[i-1]
+        prev_date = prev_entry['date']
+        prev_val = prev_entry['val']
+        entry = dated_values[i]
+        dt = entry['date']
+        val = entry['val']
+
+        prev_interpolated_val = interpolated_dated_values[ interpolated_index - interval]['val']
+
+        slope = calculate_slope(prev_interpolated_val, val, interval)
+
+        interpolation = calc_change(prev_interpolated_val, slope, interval)
+        interp_sum = numpy.sum(interpolation)
+
+        prev_date_obj = datetime.strptime(prev_date, '%Y%m%d').date()
+        interp_date = prev_date_obj + timedelta(days=1)
+        for i in range(0,len(interpolation)):
+            interpolated_dated_values.append({'val': interpolation[i], 'date':interp_date})
+            interp_date = interp_date + timedelta(days=1)
+
+        interpolated_index += interval
+        pass
+    return interpolated_dated_values
+
+
 def main(argv):
+    #calc_incremental_increase(100,6.25,4, 1, 6.25)
+    interpolated_dated_values = experiment_with_data()
+    sys.exit(0)
     start_date = datetime.strptime('20200125', '%Y%m%d').date()
+
+    ground_truth = get_ground_truth('NY')
+    truth_timeseries = convert_truth_data_to_timeseries(ground_truth, 4)
     override_date = datetime.strptime('20200415', '%Y%m%d').date()
     result_data = create_model('NY', None, 2.35, start_date, 2, 4, -0.4, 1.5, override_date)
     result_json = json.dumps(result_data)

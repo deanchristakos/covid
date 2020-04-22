@@ -8,7 +8,15 @@ import json
 import urllib.request
 import datetime
 import pytz
-from build_truth_data import create_model, convert_truth_data_to_timeseries, get_ground_truth
+from .build_truth_data import create_model, convert_truth_data_to_timeseries, get_ground_truth
+
+
+def get_state_stats(state):
+    query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
+    dbconnection = getDBConnection(cfg_dir + env + '-covid.ini')
+    state = State(state, dbconnection)
+    return json.dumps(state.get_json())
+
 
 def get_covid_tracking_data():
     url = 'https://covidtracking.com/api/states'
@@ -94,6 +102,65 @@ class CovidStates(object):
         result = {'date':self.updated_date, 'states':[c.get_json() for c in self.covid_states]}
         return result
 
+
+class State(object):
+
+    def __init__(self, state, dbconnection=None):
+        self.state = state
+        self.query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
+        self.dbconnection = dbconnection
+        self.population = None
+        self.stay_at_home_pct = None
+        self.stay_at_home_date = None
+        self.business_closed_date = None
+        self.schools_closed_date = None
+        self.pop_density_adj = None
+        self.start_date_state = None
+        self.spring_arrives = None
+        self.num_hospitals = None
+        self.staffed_beds = None
+        self.pct_unusable_beds = None
+        self.pct_require_bed = None
+        self.days_to_hospitalization = None
+        self.days_to_death = None
+        self.fatality_rate = None
+        self.median_hospital_stay = None
+        if dbconnection is not None:
+            self.build_object_from_query()
+
+    def build_object_from_query(self):
+        if self.dbconnection is None:
+            return None
+        cursor = self.dbconnection.cursor()
+        cursor.execute(self.query, (self.state,))
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        self.population = row[5]
+        self.stay_at_home_pct = row[6]
+        self.stay_at_home_date = row[7]
+        self.business_closed_date = row[8]
+        self.schools_closed_date = row[9]
+        self.pop_density_adj = row[12]
+        self.start_date_state = row[13]
+        self.spring_arrives = row[15]
+        self.num_hospitals = row[16]
+        self.staffed_beds = row[17]
+        self.pct_unusable_beds = row[22]
+        self.pct_require_bed = row[23]
+        self.days_to_hospitalization = row[24]
+        self.days_to_death = row[25]
+        self.fatality_rate = row[26]
+        self.median_hospital_stay = row[27]
+        return True
+
+    def set_dbconnection(self, dbconnection):
+        self.dbconnection = dbconnection
+
+    def get_json(self):
+        schema = StateSchema()
+        return schema.dump(self)
+
 class Covid(object):
     def __init__(self):
         self.location_id = None
@@ -139,6 +206,24 @@ class Covid(object):
         schema = CovidSchema()
         return schema.dump(self)
 
+
+class StateSchema(Schema):
+    population = fields.Int()
+    stay_at_home_pct = fields.Float()
+    stay_at_home_date = fields.Date()
+    business_closed_date = fields.Date()
+    schools_closed_date = fields.Date()
+    pop_density_adj = fields.Float()
+    start_date_state = fields.Date()
+    spring_arrives = fields.Date()
+    num_hospitals = fields.Int()
+    staffed_beds = fields.Int()
+    pct_unusable_beds = fields.Float()
+    pct_require_bed = fields.Float()
+    days_to_hospitalization = fields.Float()
+    days_to_death = fields.Float()
+    fatality_rate = fields.Float()
+    median_hospital_stay = fields.Float()
 
 
 class CovidSchema(Schema):
@@ -234,7 +319,9 @@ def get_state_timeline(state='NY'):
 def get_historic_data(state):
 
     ground_truth = get_ground_truth(state)
-    truth_timeseries = convert_truth_data_to_timeseries(ground_truth)
-
-    result_json = json.dumps(truth_timeseries)
+    truth_timeseries = convert_truth_data_to_timeseries(ground_truth,1)
+    try:
+        result_json = json.dumps(truth_timeseries)
+    except Exception as e:
+        print('error: ' + str(e))
     return result_json
