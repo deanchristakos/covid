@@ -18,6 +18,13 @@ def get_state_stats(state):
     return json.dumps(state.get_json())
 
 
+def get_covid_parameters():
+    query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
+    dbconnection = getDBConnection(cfg_dir + env + '-covid.ini')
+    covid_params = CovidParameters(dbconnection)
+    return json.dumps(covid_params.get_json())
+
+
 def get_covid_tracking_data():
     url = 'https://covidtracking.com/api/states'
     result = {}
@@ -114,6 +121,7 @@ class State(object):
         self.stay_at_home_date = None
         self.business_closed_date = None
         self.schools_closed_date = None
+        self.pop_density = None
         self.pop_density_adj = None
         self.start_date_state = None
         self.spring_arrives = None
@@ -141,6 +149,7 @@ class State(object):
         self.stay_at_home_date = row[7]
         self.business_closed_date = row[8]
         self.schools_closed_date = row[9]
+        self.pop_density = row[11]
         self.pop_density_adj = row[12]
         self.start_date_state = row[13]
         self.spring_arrives = row[15]
@@ -207,12 +216,55 @@ class Covid(object):
         return schema.dump(self)
 
 
+class CovidParameters(object):
+
+    def __init__(self, dbconnection=None):
+
+        self.query = "SELECT * FROM covid_parameters"
+        self.dbconnection = dbconnection
+        self.serial_interval = None
+        self.r0_baseline = None
+        self.school_closing_impact = None
+        self.business_closing_impact = None
+        self.fatality_rate = None
+        self.pct_hospital_die = None
+        self.days_to_hospital = None
+        self.hospital_die_days = None
+        self.hospital_live_days = None
+        if dbconnection is not None:
+            self.build_object_from_query()
+
+    def build_object_from_query(self):
+        if self.dbconnection is None:
+            return None
+        cursor = self.dbconnection.cursor()
+        cursor.execute(self.query,)
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        self.serial_interval = row[0]
+        self.r0_baseline = row[1]
+        self.school_closing_impact = row[2]
+        self.business_closing_impact = row[3]
+        self.fatality_rate = row[4]
+        self.pct_hospital_die = row[5]
+        self.days_to_hospital = row[6]
+        self.hospital_die_days = row[7]
+        self.hospital_live_days = row[8]
+        return True
+
+    def get_json(self):
+        schema = CovidParametersSchema()
+        return schema.dump(self)
+
+
 class StateSchema(Schema):
     population = fields.Int()
     stay_at_home_pct = fields.Float()
     stay_at_home_date = fields.Date()
     business_closed_date = fields.Date()
     schools_closed_date = fields.Date()
+    pop_density = fields.Float()
     pop_density_adj = fields.Float()
     start_date_state = fields.Date()
     spring_arrives = fields.Date()
@@ -261,6 +313,19 @@ class CovidSchema(Schema):
     days_till_hospitals_full = fields.Float()
     beds_per_1000 = fields.Float()
     beds_per_1000_formatted = fields.Str()
+
+
+class CovidParametersSchema(Schema):
+    serial_interval = fields.Float()
+    r0_baseline = fields.Float()
+    school_closing_impact = fields.Float()
+    business_closing_impact = fields.Float()
+    fatality_rate  = fields.Float()
+    pct_hospital_die = fields.Float()
+    days_to_hospital = fields.Float()
+    hospital_die_days  = fields.Float()
+    hospital_live_days  = fields.Float()
+
 
 def get_covid_data(country=None):
     env = None
