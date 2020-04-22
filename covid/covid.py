@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import logging
-logging.basicConfig(format='%(asctime)s %(funcName)s %(message)s', filename='/var/log/covid/covid.log',level=logging.DEBUG)
 from astor_globals import *
 from astor_square_utils import *
 from marshmallow import Schema, fields
