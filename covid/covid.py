@@ -35,12 +35,12 @@ def get_covid_tracking_data():
         data = json.loads(state_data.read().decode())
         for entry in data:
             state = entry['state']
-            positive = entry['positive']
-            date = datetime.datetime.strptime(entry['dateModified'], "%Y-%m-%dT%H:%M:%SZ")
-            dategmt = gmt.localize(date)
-            case_date = dategmt.astimezone(eastern).date()
-            hospitalized = entry['hospitalized']
-            death = entry['death'] if entry['death'] is not None else 0
+            positive = entry['positive'] if 'positive' in entry else 0
+            date = datetime.datetime.strptime(entry['dateModified'], "%Y-%m-%dT%H:%M:%SZ") if 'dateModified' in entry else None
+            dategmt = gmt.localize(date) if date is not None else None
+            case_date = dategmt.astimezone(eastern).date() if dategmt is not None else None
+            hospitalized = entry['hospitalized'] if 'hospitalized' in entry else 0
+            death = entry['death'] if 'death' in entry and entry['death'] is not None else 0
             result[state] = {'positive': positive, 'date': case_date, 'hospitalized': hospitalized, 'deaths':death}
     return result
 
@@ -373,12 +373,17 @@ def get_covid_data(country=None):
     covid_states = CovidStates(dbconnection, country)
     return json.dumps(covid_states.get_json())
 
-def get_state_timeline(state='NY'):
+def get_state_timeline(state='NY', parameters={}):
     if state is None:
         state = 'NY'
     start_date = datetime.datetime.strptime('20200125', '%Y%m%d').date()
     override_date = datetime.datetime.strptime('20200415', '%Y%m%d').date()
-    result_data = create_model(state, None, 2.35, start_date, 2, 4, -0.4, 1.5, override_date)
+    # (state, start_pop, r0, start_date, starting_infections, interval, weather_adj_val, r_override, r_override_date):
+    ['serial_interval', 'weather_adj', 'r0_baseline']
+    serial_interval = parameters['serial_interval'] if 'serial_interval' in parameters else 4
+    weather_adj = parameters['weather_adj'] if 'weather_adj' in parameters else -0.4
+    r0_baseline = parameters['r0_baseline'] if 'r0_baseline' in parameters else 2.35
+    result_data = create_model(state, None, r0_baseline, start_date, 2, serial_interval, weather_adj, 1.5, override_date, parameters)
     result_json = json.dumps(result_data)
     return result_json
 

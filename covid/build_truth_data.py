@@ -96,7 +96,7 @@ def convert_truth_data_to_timeseries(truth_data, interval=1):
     return { 'actual_hospitalizations': hospitalizations, 'actual_deaths': deaths, 'actual_positives': positives }
 
 
-def create_model(state, start_pop, r0, start_date, starting_infections, interval, weather_adj_val, r_override, r_override_date):
+def create_model(state, start_pop, r0, start_date, starting_infections, interval, weather_adj_val, r_override, r_override_date, parameters={}):
     num_removed = 0
     query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
     dbconnection = getDBConnection(cfg_dir + '/' + env + '-covid.ini')
@@ -105,22 +105,31 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     row = cursor.fetchone()
     if row is None:
         return None
-    population = row[5]
-    stay_at_home_pct = row[6]
-    stay_at_home_date = row[7]
-    business_closed_date = row[8]
-    schools_closed_date = row[9]
-    pop_density_adj = row[12]
-    start_date_state = row[13]
-    spring_arrives = row[15]
-    num_hospitals = row[16]
-    staffed_beds = row[17]
-    pct_unusable_beds = row[22]
-    pct_require_bed = row[23]
-    days_to_hospitalization = row[24]
-    days_to_death = row[25]
-    fatality_rate = row[26]
-    median_hospital_stay = row[27]
+
+    pct_require_bed = parameters['pct_require_bed'] if 'pct_require_bed' in parameters else .0125
+    days_to_hospitalization = parameters['days_to_hospital'] if 'days_to_hospital' in parameters else 12.1
+    days_to_death = parameters['days_to_death'] if 'days_to_death' in parameters else 23.6
+    fatality_rate = parameters['fatality_rate'] if 'fatality_rate' in parameters else .0066
+    #median_hospital_stay = parameters['population'] if 'population' in parameters else 15.0
+    prev_double_rate_days = 5.0
+    double_rate_days = 5.0
+    stay_at_home_pct = parameters['stay_at_home_pct'] if 'stay_at_home_pct' in parameters else 1
+
+    population = parameters['population'] if 'population' in parameters else row[5]
+    stay_at_home_pct = parameters['stay_at_home_pct'] if 'stay_at_home_pct' in parameters else row[6]
+    stay_at_home_date = datetime.strptime(parameters['stay_at_home_date'], '%Y-%m-%d').date() if 'stay_at_home_date' in parameters else row[7]
+    business_closed_date = datetime.strptime(parameters['business_closed_date'], '%Y-%m-%d').date() if 'business_closed_date' in parameters else row[8]
+    schools_closed_date = datetime.strptime(parameters['schools_closed_date'], '%Y-%m-%d').date() if 'schools_closed_date' in parameters else row[9]
+    pop_density_adj = parameters['pop_density_adj'] if 'pop_density_adj' in parameters else row[12]
+    start_date_state = datetime.strptime(parameters['start_date_state'], '%Y-%m-%d').date() if 'start_date_state' in parameters else row[13]
+    spring_arrives = datetime.strptime(parameters['spring_arrives'], '%Y-%m-%d').date() if 'spring_arrives' in parameters else row[15]
+    num_hospitals = parameters['num_hospitals'] if 'num_hospitals' in parameters else row[16]
+    staffed_beds = parameters['staffed_beds'] if 'staffed_beds' in parameters else row[17]
+    pct_unusable_beds = parameters['pct_unusable_beds'] if 'pct_unusable_beds' in parameters else row[22]
+    pct_require_bed = parameters['pct_require_bed'] if 'pct_require_bed' in parameters else row[23]
+    days_to_hospitalization = parameters['days_to_hospital'] if 'days_to_hospital' in parameters else row[24]
+    days_to_death = parameters['days_to_death'] if 'days_to_death' in parameters else row[25]
+    fatality_rate = parameters['fatality_rate'] if 'fatality_rate' in parameters else row[26]
 
     deaths_per_day = yearly_deaths/365
 
