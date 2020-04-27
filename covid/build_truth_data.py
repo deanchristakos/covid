@@ -6,10 +6,10 @@ import datetime
 from datetime import *
 import numpy
 
-pct_require_bed = .0125
 days_to_hospitalization = 12.1
 days_to_death = 23.6
-fatality_rate = .007
+fatality_rate = .066
+pct_hospital_die = .53
 median_hospital_stay = 15.0
 prev_double_rate_days = 5.0
 double_rate_days = 5.0
@@ -98,18 +98,31 @@ def convert_truth_data_to_timeseries(truth_data, interval=1):
 
 def create_model(state, start_pop, r0, start_date, starting_infections, interval, weather_adj_val, r_override, r_override_date, parameters={}):
     num_removed = 0
-    query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
+
     dbconnection = getDBConnection(cfg_dir + '/' + env + '-covid.ini')
     cursor = dbconnection.cursor()
+
+    covid_param_query = 'SELECT * FROM covid_parameters'
+    cursor.execute(covid_param_query)
+    covid_param_row = cursor.fetchone()
+    if covid_param_row is None:
+        return None
+    # "covid_parameters" is lowest priority. if there are no values in the parameters dictionary,
+    # then it will use values in the covid_parameters table. if there's a countervailing value in the state data, then we use that
+    school_closing_impact = parameters['school_closing_impact'] if 'school_closing_impact' in parameters else covid_param_row[2]
+    business_closing_impact = parameters['business_closing_impact'] if 'business_closing_impact' in parameters else covid_param_row[3]
+    pct_hospital_die = parameters['pct_hospital_die'] if 'pct_hospital_die' in parameters else covid_param_row[5] if covid_param_row[5] is not None else .54
+    fatality_rate = parameters['fatality_rate'] if 'fatality_rate' in parameters else covid_param_row[4] if covid_param_row[4] is not None else .0066
+
+
+    query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
     cursor.execute(query, (state,))
     row = cursor.fetchone()
     if row is None:
         return None
 
-    pct_require_bed = parameters['pct_require_bed'] if 'pct_require_bed' in parameters else .0125
     days_to_hospitalization = parameters['days_to_hospital'] if 'days_to_hospital' in parameters else 12.1
     days_to_death = parameters['days_to_death'] if 'days_to_death' in parameters else 23.6
-    fatality_rate = parameters['fatality_rate'] if 'fatality_rate' in parameters else .0066
     #median_hospital_stay = parameters['population'] if 'population' in parameters else 15.0
     prev_double_rate_days = 5.0
     double_rate_days = 5.0
@@ -126,10 +139,12 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     num_hospitals = parameters['num_hospitals'] if 'num_hospitals' in parameters else row[16]
     staffed_beds = parameters['staffed_beds'] if 'staffed_beds' in parameters else row[17]
     pct_unusable_beds = parameters['pct_unusable_beds'] if 'pct_unusable_beds' in parameters else row[22]
-    pct_require_bed = parameters['pct_require_bed'] if 'pct_require_bed' in parameters else row[23]
     days_to_hospitalization = parameters['days_to_hospital'] if 'days_to_hospital' in parameters else row[24]
     days_to_death = parameters['days_to_death'] if 'days_to_death' in parameters else row[25]
-    fatality_rate = parameters['fatality_rate'] if 'fatality_rate' in parameters else row[26]
+    fatality_rate = parameters['fatality_rate'] if 'fatality_rate' in parameters else row[26] if row[26] is not None else fatality_rate
+
+
+    pct_require_bed = fatality_rate / pct_hospital_die
 
     deaths_per_day = yearly_deaths/365
 
