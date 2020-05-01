@@ -3,8 +3,8 @@ from astor_globals import *
 from astor_square_utils import *
 import urllib
 import datetime
-from datetime import *
 import numpy
+from datetime import *
 
 days_to_hospitalization = 12.1
 days_to_death = 23.6
@@ -192,6 +192,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
 
     for d in range(0,30):
 
+
         for v in range(0,interval):
             btw_date_obj = current_date_obj + timedelta(days=v)
             btw_date = btw_date_obj.strftime('%Y%m%d')
@@ -227,7 +228,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
 
         pct_susceptible = 1.0*susceptible_net_quarantined/current_population
 
-        rt = base_rt - weather_adj
+        rt = base_rt + weather_adj
         rt = rt*(1+(schools_closed_adj+business_closed_adj))
         if r_override is not None and r_override_date is not None:
             if current_date_obj >= r_override_date:
@@ -268,6 +269,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
         prev_date_obj = current_date_obj - timedelta(days=interval)
         prev_date = prev_date_obj.strftime('%Y%m%d')
         implied_doubling_days = interval*numpy.log(2)/numpy.log(cases[current_date]/cases[prev_date])
+        """
         for dt in [(current_date_obj - timedelta(days=d)) for d in range(interval-1,0,-1)]:
             dt_str = dt.strftime('%Y%m%d')
             prev_date = prev_date_obj.strftime('%Y%m%d')
@@ -275,7 +277,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
             total_cases[dt_str] = total_cases[prev_date]*(2**(1.0/implied_doubling_days))
             deaths[dt_str] = deaths[prev_date]*(2**(1.0/implied_doubling_days))
             new_hospitalizations_by_date[dt_str] = new_hospitalizations_by_date[prev_date]*(2**(1.0/implied_doubling_days))
-            prev_date_obj = dt
+            prev_date_obj = dt """
 
     cases_series = []
     sorted_series = sorted(cases.keys())
@@ -285,7 +287,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
 
     deaths_series = []
     sorted_series = sorted(deaths.keys())
-    for date in sorted_series[::interval]:
+    for date in sorted_series:
         deaths_series.append({'date':date, 'val':deaths[date]})
 
     deaths_series = interpolate(deaths_series, interval)
@@ -319,7 +321,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
 
     hospitalizations_series = []
     sorted_series = sorted(new_hospitalizations_by_date.keys())
-    for date in sorted_series[::4]:
+    for date in sorted_series:
         hospitalizations_series.append({'date':date, 'val':new_hospitalizations_by_date[date]})
 
     hospitalizations_series = interpolate(hospitalizations_series, interval)
@@ -487,14 +489,14 @@ def experiment_with_data(data = [0, 1, 5, 10, 20, 30, 35, 30, 20, 10, 5, 1, 0]):
 
 def main(argv):
     #calc_incremental_increase(100,6.25,4, 1, 6.25)
-    interpolated_dated_values = experiment_with_data()
-    sys.exit(0)
+    #interpolated_dated_values = experiment_with_data()
+    #sys.exit(0)
     start_date = datetime.strptime('20200125', '%Y%m%d').date()
 
+    override_date = datetime.strptime('20200501', '%Y%m%d').date()
+    result_data = create_model('NY', None, 2.35, start_date, 2, 4, -0.4, 1.4, override_date)
     ground_truth = get_ground_truth('NY')
     truth_timeseries = convert_truth_data_to_timeseries(ground_truth, 4)
-    override_date = datetime.strptime('20200415', '%Y%m%d').date()
-    result_data = create_model('NY', None, 2.35, start_date, 2, 4, -0.4, 1.5, override_date)
     result_json = json.dumps(result_data)
     return result_json
 
