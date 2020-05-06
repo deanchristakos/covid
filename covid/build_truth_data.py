@@ -96,7 +96,7 @@ def convert_truth_data_to_timeseries(truth_data, interval=1):
     return { 'actual_hospitalizations': hospitalizations, 'actual_deaths': deaths, 'actual_positives': positives }
 
 
-def create_model(state, start_pop, r0, start_date, starting_infections, interval, weather_adj_val, r_override, r_override_date, parameters={}):
+def create_model(state, start_pop, r0, start_date, starting_infections, interval, r_override, r_override_date, parameters={}):
     num_removed = 0
 
     dbconnection = getDBConnection(cfg_dir + '/' + env + '-covid.ini')
@@ -113,7 +113,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     business_closing_impact = parameters['business_closing_impact'] if 'business_closing_impact' in parameters else covid_param_row[3]
     pct_hospital_die = parameters['pct_hospital_die'] if 'pct_hospital_die' in parameters else covid_param_row[5] if covid_param_row[5] is not None else .54
     fatality_rate = parameters['fatality_rate'] if 'fatality_rate' in parameters else covid_param_row[4] if covid_param_row[4] is not None else .0066
-
+    weather_adj_val = parameters['warm_weather_impact'] if 'warm_weather_impact' in parameters else covid_param_row[9] if covid_param_row[9] is not None else -0.4
 
     query = "SELECT * FROM state_stats WHERE state_abbrev = %s"
     cursor.execute(query, (state,))
