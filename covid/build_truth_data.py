@@ -218,9 +218,9 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
         if spring_arrives is not None and current_date_obj >= spring_arrives:
             weather_adj = weather_adj_val
         if schools_closed_date is not None and current_date_obj >= schools_closed_date:
-            schools_closed_adj = -0.3
+            schools_closed_adj = school_closing_impact
         if business_closed_date is not None and current_date_obj >= business_closed_date:
-            business_closed_adj = -0.35
+            business_closed_adj = business_closing_impact
         if stay_at_home_date is not None and current_date_obj >= stay_at_home_date:
             stay_at_home_adj = 0.5
 
