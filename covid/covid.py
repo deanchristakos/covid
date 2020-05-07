@@ -233,6 +233,8 @@ class CovidParameters(object):
         self.hospital_die_days = None
         self.hospital_live_days = None
         self.warm_weather_impact = None
+        self.infection_start_date = None
+        self.starting_infections = None
         if dbconnection is not None:
             self.build_object_from_query()
 
@@ -254,6 +256,8 @@ class CovidParameters(object):
         self.hospital_die_days = row[7]
         self.hospital_live_days = row[8]
         self.warm_weather_impact = row[9]
+        self.infection_start_date = row[10]
+        self.starting_infections = row[11]
         return True
 
     def get_json(self):
@@ -329,6 +333,8 @@ class CovidParametersSchema(Schema):
     hospital_die_days  = fields.Float()
     hospital_live_days  = fields.Float()
     warm_weather_impact = fields.Float()
+    infection_start_date = fields.Date()
+    starting_infections = fields.Float()
 
 
 def get_covid_data(country=None):
@@ -385,7 +391,9 @@ def get_state_timeline(state='NY', parameters={}):
     ['serial_interval', 'weather_adj', 'r0_baseline']
     serial_interval = parameters['serial_interval'] if 'serial_interval' in parameters else 4
     r0_baseline = parameters['r0_baseline'] if 'r0_baseline' in parameters else 2.35
-    result_data = create_model(state, None, r0_baseline, start_date, 2, serial_interval, 1.5, override_date, parameters)
+    start_date = datetime.datetime.strptime(parameters['infection_start_date'], '%Y-%m-%d').date() if 'infection_start_date' in parameters else datetime.datetime.strptime('20200125', '%Y%m%d').date()
+    starting_cases = parameters['starting_infections'] if 'starting_infections' in parameters else 2
+    result_data = create_model(state, None, r0_baseline, start_date, starting_cases, serial_interval, 1.5, override_date, parameters)
     result_json = json.dumps(result_data)
     return result_json
 
