@@ -282,15 +282,15 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     cases_series = []
     sorted_series = sorted(cases.keys())
     for date in sorted_series[::interval]:
-        cases_series.append({'date':date, 'val':cases[date]})
-    cases_series = interpolate(cases_series, interval)
+        cases_series.append({'date':date, 'val':cases[date]/4.0})
+    #cases_series = interpolate(cases_series, interval)
 
     deaths_series = []
     sorted_series = sorted(deaths.keys())
     for date in sorted_series:
-        deaths_series.append({'date':date, 'val':deaths[date]})
+        deaths_series.append({'date':date, 'val':deaths[date]/4.0})
 
-    deaths_series = interpolate(deaths_series, interval)
+    #deaths_series = interpolate(deaths_series, interval)
     daily_deaths_series = []
     """
     last_death_entry = None
@@ -322,9 +322,9 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     hospitalizations_series = []
     sorted_series = sorted(new_hospitalizations_by_date.keys())
     for date in sorted_series:
-        hospitalizations_series.append({'date':date, 'val':new_hospitalizations_by_date[date]})
+        hospitalizations_series.append({'date':date, 'val':new_hospitalizations_by_date[date]/4.0})
 
-    hospitalizations_series = interpolate(hospitalizations_series, interval)
+    #hospitalizations_series = interpolate(hospitalizations_series, interval)
     return {'cases': cases_series, 'deaths':deaths_series, 'hospitalizations':hospitalizations_series}
 
 
