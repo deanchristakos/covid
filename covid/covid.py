@@ -388,12 +388,13 @@ def get_state_timeline(state='NY', parameters={}):
     start_date = datetime.datetime.strptime('20200125', '%Y%m%d').date()
     override_date = datetime.datetime.strptime('20200415', '%Y%m%d').date()
     # (state, start_pop, r0, start_date, starting_infections, interval, weather_adj_val, r_override, r_override_date):
+    override_value = None
     ['serial_interval', 'weather_adj', 'r0_baseline']
     serial_interval = parameters['serial_interval'] if 'serial_interval' in parameters else 4
     r0_baseline = parameters['r0_baseline'] if 'r0_baseline' in parameters else 2.35
     start_date = datetime.datetime.strptime(parameters['infection_start_date'], '%Y-%m-%d').date() if 'infection_start_date' in parameters else datetime.datetime.strptime('20200125', '%Y%m%d').date()
     starting_cases = parameters['starting_infections'] if 'starting_infections' in parameters else 2
-    result_data = create_model(state, None, r0_baseline, start_date, starting_cases, serial_interval, 1.5, override_date, parameters)
+    result_data = create_model(state, None, r0_baseline, start_date, starting_cases, serial_interval, override_value, override_date, parameters)
     result_json = json.dumps(result_data)
     return result_json
 
