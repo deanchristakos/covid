@@ -109,8 +109,8 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
         return None
     # "covid_parameters" is lowest priority. if there are no values in the parameters dictionary,
     # then it will use values in the covid_parameters table. if there's a countervailing value in the state data, then we use that
-    school_closing_impact = parameters['school_closing_impact'] if 'school_closing_impact' in parameters else covid_param_row[2]
-    business_closing_impact = parameters['business_closing_impact'] if 'business_closing_impact' in parameters else covid_param_row[3]
+    school_closing_impact = parameters['pct_school_closing_impact'] if 'pct_school_closing_impact' in parameters else covid_param_row[2]
+    business_closing_impact = parameters['pct_business_closing_impact'] if 'pct_business_closing_impact' in parameters else covid_param_row[3]
     pct_hospital_die = parameters['pct_hospital_die'] if 'pct_hospital_die' in parameters else covid_param_row[5] if covid_param_row[5] is not None else .54
     fatality_rate = parameters['fatality_rate'] if 'fatality_rate' in parameters else covid_param_row[4] if covid_param_row[4] is not None else .0066
     weather_adj_val = parameters['warm_weather_impact'] if 'warm_weather_impact' in parameters else covid_param_row[9] if covid_param_row[9] is not None else -0.4
@@ -268,7 +268,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
 
         prev_date_obj = current_date_obj - timedelta(days=interval)
         prev_date = prev_date_obj.strftime('%Y%m%d')
-        implied_doubling_days = interval*numpy.log(2)/numpy.log(cases[current_date]/cases[prev_date])
+        #implied_doubling_days = interval*numpy.log(2)/numpy.log(cases[current_date]/cases[prev_date])
         """
         for dt in [(current_date_obj - timedelta(days=d)) for d in range(interval-1,0,-1)]:
             dt_str = dt.strftime('%Y%m%d')

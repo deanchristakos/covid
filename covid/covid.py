@@ -225,8 +225,8 @@ class CovidParameters(object):
         self.dbconnection = dbconnection
         self.serial_interval = None
         self.r0_baseline = None
-        self.school_closing_impact = None
-        self.business_closing_impact = None
+        self.pct_school_closing_impact = None
+        self.pct_business_closing_impact = None
         self.fatality_rate = None
         self.pct_hospital_die = None
         self.days_to_hospital = None
@@ -235,6 +235,8 @@ class CovidParameters(object):
         self.warm_weather_impact = None
         self.infection_start_date = None
         self.starting_infections = None
+        self.r0_override = None
+        self.r0_override_date = None
         if dbconnection is not None:
             self.build_object_from_query()
 
@@ -248,8 +250,8 @@ class CovidParameters(object):
             return None
         self.serial_interval = row[0]
         self.r0_baseline = row[1]
-        self.school_closing_impact = row[2]
-        self.business_closing_impact = row[3]
+        self.pct_school_closing_impact = row[2]
+        self.pct_business_closing_impact = row[3]
         self.fatality_rate = row[4]
         self.pct_hospital_die = row[5]
         self.days_to_hospital = row[6]
@@ -258,6 +260,8 @@ class CovidParameters(object):
         self.warm_weather_impact = row[9]
         self.infection_start_date = row[10]
         self.starting_infections = row[11]
+        self.r0_override = row[12]
+        self.r0_override_date = row[13]
         return True
 
     def get_json(self):
@@ -325,8 +329,8 @@ class CovidSchema(Schema):
 class CovidParametersSchema(Schema):
     serial_interval = fields.Float()
     r0_baseline = fields.Float()
-    school_closing_impact = fields.Float()
-    business_closing_impact = fields.Float()
+    pct_school_closing_impact = fields.Float()
+    pct_business_closing_impact = fields.Float()
     fatality_rate  = fields.Float()
     pct_hospital_die = fields.Float()
     days_to_hospital = fields.Float()
@@ -335,6 +339,8 @@ class CovidParametersSchema(Schema):
     warm_weather_impact = fields.Float()
     infection_start_date = fields.Date()
     starting_infections = fields.Float()
+    r0_override = fields.Float()
+    r0_override_date = fields.Date()
 
 
 def get_covid_data(country=None):
@@ -387,13 +393,17 @@ def get_state_timeline(state='NY', parameters={}):
         state = 'NY'
     start_date = datetime.datetime.strptime('20200125', '%Y%m%d').date()
     override_date = datetime.datetime.strptime('20200415', '%Y%m%d').date()
-    # (state, start_pop, r0, start_date, starting_infections, interval, weather_adj_val, r_override, r_override_date):
     override_value = None
-    ['serial_interval', 'weather_adj', 'r0_baseline']
+    # (state, start_pop, r0, start_date, starting_infections, interval, weather_adj_val, r_override, r_override_date):
+
     serial_interval = parameters['serial_interval'] if 'serial_interval' in parameters else 4
     r0_baseline = parameters['r0_baseline'] if 'r0_baseline' in parameters else 2.35
     start_date = datetime.datetime.strptime(parameters['infection_start_date'], '%Y-%m-%d').date() if 'infection_start_date' in parameters else datetime.datetime.strptime('20200125', '%Y%m%d').date()
     starting_cases = parameters['starting_infections'] if 'starting_infections' in parameters else 2
+
+    override_value = parameters['r0_override'] if 'r0_override' in parameters else override_value
+    override_date = datetime.datetime.strptime(parameters['r0_override_date'], '%Y-%m-%d').date() if 'r0_override_date' in parameters else override_date
+
     result_data = create_model(state, None, r0_baseline, start_date, starting_cases, serial_interval, override_value, override_date, parameters)
     result_json = json.dumps(result_data)
     return result_json
