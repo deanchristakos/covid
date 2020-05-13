@@ -134,7 +134,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     business_closed_date = datetime.strptime(parameters['business_closed_date'], '%Y-%m-%d').date() if 'business_closed_date' in parameters else row[8]
     schools_closed_date = datetime.strptime(parameters['schools_closed_date'], '%Y-%m-%d').date() if 'schools_closed_date' in parameters else row[9]
     pop_density_adj = parameters['pop_density_adj'] if 'pop_density_adj' in parameters else row[12]
-    start_date_state = datetime.strptime(parameters['start_date_state'], '%Y-%m-%d').date() if 'start_date_state' in parameters else row[13]
+    start_date_state = datetime.strptime(parameters['infection_start_date'], '%Y-%m-%d').date() if 'infection_start_date' in parameters else row[13]
     spring_arrives = datetime.strptime(parameters['spring_arrives'], '%Y-%m-%d').date() if 'spring_arrives' in parameters else row[15]
     num_hospitals = parameters['num_hospitals'] if 'num_hospitals' in parameters else row[16]
     staffed_beds = parameters['staffed_beds'] if 'staffed_beds' in parameters else row[17]
@@ -158,7 +158,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     business_closed_adj = 0
 
     # do 100 data points
-    current_date_obj = start_date
+    current_date_obj = start_date_state if start_date_state is not None else start_date
     new_infections = -1
     base_rt = r0 + pop_density_adj
     rt = base_rt
@@ -190,7 +190,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     deaths[current_date] = 0
     total_deaths_by_date[current_date] = 0
 
-    for d in range(0,30):
+    for d in range(0,60):
 
 
         for v in range(0,interval):
