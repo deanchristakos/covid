@@ -190,7 +190,7 @@ def create_model(state, start_pop, r0, start_date, starting_infections, interval
     deaths[current_date] = 0
     total_deaths_by_date[current_date] = 0
 
-    for d in range(0,30):
+    for d in range(0,70):
 
 
         for v in range(0,interval):
